@@ -28,7 +28,6 @@ export default function LoginPage() {
         return
       }
 
-      // 🌟 ĐÃ SỬA: Phân quyền điều hướng sau khi đăng nhập thành công
       const userRole = data.user?.role;
       
       if (userRole === 'STAFF_SALES') {

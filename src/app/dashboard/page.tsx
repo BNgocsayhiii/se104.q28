@@ -20,12 +20,30 @@ function urgencyLabel(daysLeft: number) {
 export default function DashboardOverview() {
   const { stats, loading, error } = useDashboardStats()
 
+  const expiringCount = stats?.urgentBatches.length ?? stats?.expiringSoon.value ?? 0
+  const lowStockCount = stats?.lowStock.value ?? 0
+
   const cards = [
-    { label: 'Lô cần xử lý', value: stats?.expiringSoon.formatted || '0 lô', tone: 'bg-gradient-to-br from-white via-lime-100 to-emerald-100 text-emerald-900', href: '/dashboard/kho-hang/huy-hang' },
-    { label: 'Sắp hết hàng', value: stats?.lowStock.formatted || '0 mặt hàng', tone: 'bg-gradient-to-br from-emerald-100 via-lime-100 to-pink-100 text-emerald-900', href: '/dashboard/kho-hang/nhap-hang' },
+    { label: 'Lô cần xử lý', value: `${expiringCount} lô`, tone: 'bg-gradient-to-br from-white via-lime-100 to-emerald-100 text-emerald-900', href: '/dashboard/kho-hang/huy-hang' },
+    { label: 'Sắp hết hàng', value: `${lowStockCount} mặt hàng`, tone: 'bg-gradient-to-br from-emerald-100 via-lime-100 to-pink-100 text-emerald-900', href: '/dashboard/kho-hang/nhap-hang' },
     { label: 'Doanh thu hôm nay', value: stats?.revenue.formatted || '0 đ', tone: 'bg-gradient-to-br from-pink-100 via-rose-100 to-amber-100 text-rose-900', href: '/dashboard/bao-cao' },
     { label: 'Lợi nhuận hôm nay', value: stats?.profit.formatted || '0 đ', tone: 'bg-gradient-to-br from-amber-100 via-amber-200 to-orange-200 text-emerald-900', valueColor: 'text-rose-700', href: '/dashboard/bao-cao' },
   ]
+
+  const floatingFruits = [
+  { icon: '🍎', pos: 'top-[8%] left-[5%]', delay: '0s' },
+  { icon: '🍐', pos: 'top-[15%] right-[12%]', delay: '1s' },
+  { icon: '🍒', pos: 'top-[28%] left-[40%]', delay: '1.9s' },
+  { icon: '🍇', pos: 'top-[40%] right-[10%]', delay: '0.5s' },
+  { icon: '🥭', pos: 'top-[50%] left-[8%]', delay: '2s' },
+  { icon: '🍊', pos: 'top-[62%] left-[62%]', delay: '3.5s' },
+  { icon: '🍌', pos: 'top-[70%] left-[30%]', delay: '2.7s' },
+  { icon: '🍓', pos: 'top-[82%] right-[8%]', delay: '2.5s' },
+  { icon: '🍈', pos: 'top-[88%] left-[15%]', delay: '1.5s' },
+  { icon: '🥥', pos: 'top-[92%] right-[45%]', delay: '1.2s' },
+  { icon: '🥝', pos: 'top-[96%] left-[55%]', delay: '3s' },
+  { icon: '🍑', pos: 'top-[20%] left-[25%]', delay: '0.8s' },
+];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f4ebeb] via-[#FFF9E3] to-[#caf5dd] p-6 text-slate-800">
