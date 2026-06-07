@@ -12,6 +12,8 @@ export interface SaleBatch {
   effectiveRemaining: number
   expiredAt: string
   status: string
+  importPrice: number // Giá nhập/Giá vốn của lô
+  sellPrice?: number  
 }
 
 export interface SaleProduct {
@@ -36,6 +38,7 @@ export interface CartItem {
   productId: string
   batchId?: string
   quantity: number
+  unitPrice: number
 }
 
 export interface NewCustomerDraft {
@@ -91,7 +94,10 @@ export function useCreateSalesInvoice() {
     return cartItems.map((item) => {
       const product = products.find((entry) => entry.id === item.productId)
       const batch = product?.batches.find((entry) => entry.id === item.batchId)
-      const unitPrice = product?.currentPrice || 0
+      
+      // FIX: Ưu tiên giá trị nhập (importPrice) của từng lô để làm giá cơ sở
+      const unitPrice = item.unitPrice ?? batch?.sellPrice ?? product?.currentPrice ?? 0
+      
       return {
         ...item,
         product,
@@ -118,21 +124,33 @@ export function useCreateSalesInvoice() {
   const pointDiscount = Math.max(pointsUsed, 0) * 1000
   const finalAmount = Math.max(totalAmount - discountAmount - pointDiscount + Math.max(shippingFee, 0), 0)
 
-  const addItem = useCallback((productId: string, batchId?: string) => {
+  const addItem = useCallback((productId: string, batchId?: string, currentBatchPrice?: number) => {
     if (!productId) return
     setCartItems((current) => {
       const foundIndex = current.findIndex((item) => item.productId === productId && item.batchId === batchId)
-      if (foundIndex >= 0) {
-        return current
-      }
-      return [...current, { productId, batchId, quantity: 0 }]
+      if (foundIndex >= 0) return current
+
+      const product = products.find(p => p.id === productId)
+      const batch = product?.batches.find(b => b.id === batchId)
+      
+      // FIX: Ưu tiên giá truyền vào từ UI, sau đó lô, rồi giá mặc định
+      const defaultPrice = currentBatchPrice ?? batch?.sellPrice ?? product?.currentPrice ?? 0
+
+      return [...current, { productId, batchId, quantity: 0, unitPrice: defaultPrice }]
     })
-  }, [])
+  }, [products])
 
   const updateItemQuantity = useCallback((index: number, quantity: number) => {
     const normalizedQuantity = Number.isFinite(quantity) ? Math.max(quantity, 0) : 0
     setCartItems((current) =>
       current.map((item, itemIndex) => (itemIndex === index ? { ...item, quantity: normalizedQuantity } : item)),
+    )
+  }, [])
+
+  const updateItemPrice = useCallback((index: number, price: number) => {
+    const normalizedPrice = Number.isFinite(price) ? Math.max(price, 0) : 0
+    setCartItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, unitPrice: normalizedPrice } : item)),
     )
   }, [])
 
@@ -174,11 +192,6 @@ export function useCreateSalesInvoice() {
       return null
     }
 
-    if (channel === 'ONLINE' && !(shippingAddress || selectedCustomer?.address || newCustomer.address).trim()) {
-      setError('Đơn online cần có địa chỉ giao hàng')
-      return null
-    }
-
     setSubmitting(true)
     setError('')
     setSuccessMessage('')
@@ -189,7 +202,7 @@ export function useCreateSalesInvoice() {
         body: JSON.stringify({
           customerId: selectedCustomerId || undefined,
           customer: !selectedCustomerId && newCustomer.name.trim() && newCustomer.phone.trim() ? newCustomer : undefined,
-          items: cartItems,
+          items: cartItems, 
           discountPercent,
           pointsUsed,
           shippingFee,
@@ -259,6 +272,7 @@ export function useCreateSalesInvoice() {
     setShippingAddress,
     addItem,
     updateItemQuantity,
+    updateItemPrice,
     removeItem,
     createInvoice,
     refreshData,

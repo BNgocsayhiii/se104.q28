@@ -149,14 +149,19 @@ export async function POST(req: NextRequest) {
             name: supplier.name,
             phone: supplier.phone || null,
             address: supplier.address || null,
-            contactPerson: supplier.contactPerson || null,
-          }
+            contactName: supplier.contactPerson || supplier.contactName || null,          }
         })
         resolvedSupplierId = newSupplier.id
       }
 
       // 2. Tính tổng tiền
-      const totalAmount = lines.reduce((sum: number, line: any) => sum + (line.quantity * line.importPrice), 0)
+      for (const line of lines) {
+        if (!Number.isFinite(Number(line.quantity)) || Number(line.quantity) <= 0) throw new Error('So luong nhap phai lon hon 0')
+        if (!Number.isFinite(Number(line.importPrice)) || Number(line.importPrice) <= 0) throw new Error('Gia nhap phai lon hon 0')
+        if (!Number.isFinite(Number(line.sellPrice ?? line.product?.currentPrice)) || Number(line.sellPrice ?? line.product?.currentPrice) <= 0) throw new Error('Gia ban phai lon hon 0')
+      }
+
+      const totalAmount = lines.reduce((sum: number, line: any) => sum + (Number(line.quantity) * Number(line.importPrice)), 0)
 
       // 3. Tạo phiếu nhập
       const receipt = await tx.importReceipt.create({
@@ -176,6 +181,7 @@ export async function POST(req: NextRequest) {
       for (const line of lines) {
         let resolvedProductId = line.product.id
         let productShelfLife = 0
+        const sellPrice = Number(line.sellPrice ?? line.product.currentPrice)
 
         // Nếu sản phẩm không có ID -> Tạo sản phẩm mới
         if (!resolvedProductId) {
@@ -185,7 +191,7 @@ export async function POST(req: NextRequest) {
               sku: generatedSku,
               name: line.product.name,
               unit: line.product.unit || 'kg',
-              currentPrice: Number(line.product.currentPrice) || Number(line.importPrice),
+              currentPrice: sellPrice,
               shelfLifeDays: Number(line.product.shelfLifeDays) || 5,
               evaporationRate: 0, 
               categoryId: line.product.categoryId || defaultCategory?.id,
@@ -199,6 +205,12 @@ export async function POST(req: NextRequest) {
           const existingProduct = await tx.product.findUnique({ where: { id: resolvedProductId } })
           if (!existingProduct) throw new Error(`Sản phẩm ${line.product.name} không tồn tại`)
           productShelfLife = existingProduct.shelfLifeDays
+          if (existingProduct.currentPrice !== sellPrice) {
+            await tx.product.update({
+              where: { id: resolvedProductId },
+              data: { currentPrice: sellPrice },
+            })
+          }
         }
 
         // 5. Tính hạn sử dụng
@@ -211,10 +223,10 @@ export async function POST(req: NextRequest) {
             batchCode: await buildBatchCode(tx),
             importReceiptId: receipt.id,
             productId: resolvedProductId,
-            quantity: line.quantity,
-            remaining: line.quantity,
-            effectiveRemaining: line.quantity,
-            importPrice: line.importPrice,
+            quantity: Number(line.quantity),
+            remaining: Number(line.quantity),
+            effectiveRemaining: Number(line.quantity),
+            importPrice: Number(line.importPrice),
             packagedAt: new Date(line.packagedAt),
             expiredAt,
             status: getBatchStatus(expiredAt),

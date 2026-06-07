@@ -36,9 +36,7 @@ const floatingFruits = [
   { icon: '🥝', pos: 'top-[96%] left-[55%]', delay: '3s' },
   { icon: '🍑', pos: 'top-[20%] left-[25%]', delay: '0.8s' },
 ];
-
 // ---- Component Modal Thêm/Sửa ----
-// ĐÃ SỬA: Bổ sung currentUserId vào Props để check quyền
 function UserModal({
   user, currentRole, currentUserId, onClose, onSaved,
 }: {
@@ -52,7 +50,8 @@ function UserModal({
     email: user?.email || '',
     role: user?.role || 'STAFF_SALES',
     username: user?.username || '',
-    password: '',
+    // Gán sẵn mật khẩu mặc định nếu là thêm mới để lúc submit API không bị lỗi
+    password: isEdit ? '' : '123456', 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -105,14 +104,7 @@ function UserModal({
               </div>
             )}
 
-            {!isEdit && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu *</label>
-                <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 font-medium placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#60A61F] transition-all"
-                  placeholder="Tối thiểu 8 ký tự, có chữ và số" />
-              </div>
-            )}
+            {/* ĐÃ XÓA TRƯỜNG NHẬP MẬT KHẨU KHI THÊM MỚI Ở ĐÂY */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
@@ -140,7 +132,7 @@ function UserModal({
               </div>
             )}
 
-            {/* Chỉ Quản lý và đang sửa người KHÁC mới được đổi chức vụ, không ai được tự đổi chức vụ của chính mình */}
+            {/* Chỉ Quản lý và đang sửa người KHÁC mới được đổi chức vụ */}
             {currentRole === 'MANAGER' && user?.id !== currentUserId && (
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
@@ -154,9 +146,10 @@ function UserModal({
             )}
           </div>
 
+          {/* DÒNG GHI CHÚ MẬT KHẨU MẶC ĐỊNH */}
           {!isEdit && (
-            <p className="text-xs text-[#1a4d2e] bg-[#CBEFAA]/30 border border-[#CBEFAA] rounded-lg px-3 py-2">
-              Mật khẩu phải có tối thiểu 8 ký tự, bao gồm chữ và số.
+            <p className="text-sm text-[#1a4d2e] bg-[#CBEFAA]/30 border border-[#CBEFAA] rounded-lg px-3 py-2 font-medium">
+              Mật khẩu mặc định cho tài khoản mới là: <span className="font-bold text-lg">123456</span>
             </p>
           )}
         </div>
@@ -175,7 +168,6 @@ function UserModal({
     </div>
   );
 }
-
 // ---- Trang chính ----
 export default function DanhSachNhanVienPage() {
   const { users, role, currentUserId, isLoading, error, refetch } = useUsers();

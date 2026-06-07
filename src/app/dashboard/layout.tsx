@@ -171,7 +171,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link href="/dashboard/tro-ly-ai" className="ft-ai-btn">
               <div className="ft-ai-dot" />
               <span style={{ flex: 1 }}>Trợ lý AI</span>
-              <span className="ft-ai-kbd">⌘K</span>
+              <span className="ft-ai-kbd"> </span>
             </Link>
           )}
         </nav>
@@ -179,7 +179,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="ft-footer">
           <div className="ft-store-status">
             <div className="ft-status-dot" />
-            <div>
+            <div className="ft-status-text">
               <p>{greeting}</p>
               <p>Mở cửa 07:00 – 22:00</p>
             </div>
@@ -238,6 +238,9 @@ const STYLES = `
  .ft-sidebar:not(:hover) {
    overflow: hidden;
  }
+
+ .ft-sidebar:not(:hover) .ft-status-text { display: none; }
+ .ft-sidebar:not(:hover) .ft-store-status { justify-content: center; }
 
  .ft-sidebar:not(:hover) .ft-logo-name {
    opacity: 0;

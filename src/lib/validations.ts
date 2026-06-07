@@ -84,6 +84,7 @@ export const invoiceItemSchema = z.object({
   productId: z.string().min(1, 'Thiếu sản phẩm'),
   batchId: z.string().optional(),
   quantity: z.coerce.number().positive('Số lượng bán phải lớn hơn 0'),
+  unitPrice: z.coerce.number().min(0, 'Gia ban khong duoc am').optional(),
 })
 
 export const invoiceCreateSchema = z.object({

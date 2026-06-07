@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
               effectiveRemaining: true,
               expiredAt: true,
               status: true,
+              importPrice: true, // Lấy giá vốn để hiển thị tham khảo
             },
           },
         },
@@ -83,12 +84,14 @@ export async function POST(req: NextRequest) {
     const { session, response } = await requireSession(req, ['MANAGER', 'STAFF_SALES'])
     if (response) return response
 
+    const dbUser = await prisma.user.findUnique({ where: { id: session.id } })
+    if (!dbUser) return apiError('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại', { status: 401 })
+
     const parsed = invoiceCreateSchema.safeParse(await req.json())
     if (!parsed.success) return apiError(formatZodError(parsed.error), { status: 400 })
 
     const body = parsed.data
 
-    // ✅ $transaction chỉ chứa các DB write cần atomic
     const invoice = await prisma.$transaction(async (tx) => {
       let customerId = body.customerId || undefined
 
@@ -128,7 +131,11 @@ export async function POST(req: NextRequest) {
           if (remainingToSell <= 0) break
           const sellQuantity = Math.min(batch.effectiveRemaining, remainingToSell)
           await tx.batch.update({ where: { id: batch.id }, data: { remaining: { decrement: sellQuantity }, effectiveRemaining: { decrement: sellQuantity } } })
-          invoiceItems.push({ productId: product.id, batchId: batch.id, quantity: sellQuantity, unitPrice: product.currentPrice, subtotal: sellQuantity * product.currentPrice })
+          
+          // Lấy giá từ Frontend gửi lên (cho phép đổi giá từng lô), nếu không có thì dùng giá chung
+          const actualUnitPrice = (item as any).unitPrice ?? product.currentPrice
+          
+          invoiceItems.push({ productId: product.id, batchId: batch.id, quantity: sellQuantity, unitPrice: actualUnitPrice, subtotal: sellQuantity * actualUnitPrice })
           remainingToSell -= sellQuantity
         }
 
@@ -172,11 +179,9 @@ export async function POST(req: NextRequest) {
         await tx.customer.update({ where: { id: customerId }, data: { points: { increment: pointsEarned - body.pointsUsed } } })
       }
 
-      // ✅ KHÔNG gọi writeAuditLog ở đây nữa
       return createdInvoice
     })
 
-    // ✅ Gọi NGOÀI transaction — dùng prisma thay vì tx
     await writeAuditLog(prisma, {
       userId: session.id,
       action: 'CREATE_INVOICE',

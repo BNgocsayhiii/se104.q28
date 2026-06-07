@@ -131,6 +131,12 @@ function ProductSmartInput({ products, categories, draftProduct, onChange }: Pro
             setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              e.preventDefault()
+              setIsOpen(false)
+            }
+          }}
         />
         {draftProduct.id && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
@@ -146,7 +152,7 @@ function ProductSmartInput({ products, categories, draftProduct, onChange }: Pro
               key={p.id}
               className="cursor-pointer px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-green-50"
               onClick={() => {
-                onChange({ ...draftProduct, id: p.id, name: `${p.name} - ${p.sku}`, shelfLifeDays: p.shelfLifeDays.toString() })
+                onChange({ ...draftProduct, id: p.id, name: `${p.name} - ${p.sku}`, shelfLifeDays: p.shelfLifeDays.toString(), currentPrice: String(p.currentPrice || '') })
                 setIsOpen(false)
               }}
             >
@@ -161,15 +167,30 @@ function ProductSmartInput({ products, categories, draftProduct, onChange }: Pro
         </div>
       )}
 
+      {/* COMPONENT ĐÃ ĐƯỢC CHỈNH SỬA LẠI (Chỉ còn HSD và Danh mục) */}
       {!draftProduct.id && draftProduct.name && (
-        <div className="mt-2 grid gap-2 md:grid-cols-4 rounded-xl bg-orange-50/50 p-3 border border-orange-200 border-dashed">
-          <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400" placeholder="Mã SKU (Tự động)" value={draftProduct.sku} onChange={e => onChange({ ...draftProduct, sku: e.target.value })} />
-          <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400" placeholder="ĐVT (VD: kg)" value={draftProduct.unit} onChange={e => onChange({ ...draftProduct, unit: e.target.value })} />
-          <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400" type="number" placeholder="HSD (Ngày)" value={draftProduct.shelfLifeDays} onChange={e => onChange({ ...draftProduct, shelfLifeDays: e.target.value })} />
-          <select className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400" value={draftProduct.categoryId} onChange={e => onChange({ ...draftProduct, categoryId: e.target.value })}>
-            <option value="">Chọn danh mục...</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+        <div className="mt-2 grid gap-3 md:grid-cols-2 rounded-xl bg-orange-50/40 p-3 border border-orange-200 border-dashed">
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase text-orange-600">Hạn sử dụng (Ngày)</label>
+            <input 
+              className="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white" 
+              type="number" 
+              placeholder="VD: 5" 
+              value={draftProduct.shelfLifeDays} 
+              onChange={e => onChange({ ...draftProduct, shelfLifeDays: e.target.value })} 
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase text-orange-600">Danh mục trái cây</label>
+            <select 
+              className="w-full rounded-lg border border-orange-200 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white" 
+              value={draftProduct.categoryId} 
+              onChange={e => onChange({ ...draftProduct, categoryId: e.target.value })}
+            >
+              <option value="">Chọn danh mục...</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
         </div>
       )}
     </div>
@@ -179,18 +200,22 @@ function ProductSmartInput({ products, categories, draftProduct, onChange }: Pro
 export default function TrangNhapHang() {
   const { data, draft, historyFilter, loading, submitting, error, successMessage, setDraft, setHistoryFilter, createImport } = useWarehouseImport()
   
+  const [selectedReceipt, setSelectedReceipt] = useState<any>(null)
+
   const estimatedTotal = useMemo(() => draft.lines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.importPrice || 0), 0), [draft.lines])
+  const estimatedRevenue = useMemo(() => draft.lines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.sellPrice || line.product.currentPrice || 0), 0), [draft.lines])
+  const estimatedProfit = estimatedRevenue - estimatedTotal
 
   const updateLine = (index: number, patch: Partial<typeof draft.lines[number]>) => {
     setDraft({ ...draft, lines: draft.lines.map((line, lineIndex) => lineIndex === index ? { ...line, ...patch } : line) })
   }
 
-  const addLine = () => setDraft({ ...draft, lines: [...draft.lines, { product: { id: '', name: '', sku: '', unit: 'kg', shelfLifeDays: '5', currentPrice: '', categoryId: '' }, quantity: '', importPrice: '', packagedAt: new Date().toISOString().slice(0, 10) }] })
+  const addLine = () => setDraft({ ...draft, lines: [...draft.lines, { product: { id: '', name: '', sku: '', unit: 'kg', shelfLifeDays: '5', currentPrice: '', categoryId: '' }, quantity: '', importPrice: '', sellPrice: '', packagedAt: new Date().toISOString().slice(0, 10) }] })
   const removeLine = (index: number) => draft.lines.length > 1 && setDraft({ ...draft, lines: draft.lines.filter((_, lineIndex) => lineIndex !== index) })
 
   return (
-    <div className="h-[calc(100vh-32px)] overflow-hidden p-4 text-slate-800">
-      <div className="mx-auto flex h-full max-w-[1400px] gap-6">
+    <div className="h-[calc(100vh-32px)] overflow-hidden p-4 text-slate-800 relative">
+      <div className="mx-auto flex h-full max-w-[1400px] gap-6 relative z-10">
         
         {/* === CỘT TRÁI: FORM NHẬP HÀNG === */}
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
@@ -231,12 +256,13 @@ export default function TrangNhapHang() {
                     products={data?.products || []} 
                     categories={data?.categories || []}
                     draftProduct={line.product}
-                    onChange={(prod) => updateLine(index, { product: prod })}
+                    onChange={(prod) => updateLine(index, { product: prod, sellPrice: prod.currentPrice || line.sellPrice })}
                   />
 
-                  <div className="grid gap-2 md:grid-cols-3">
-                    <input className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-[#60A61F]" type="number" min="0" step="0.1" placeholder="Số lượng nhập" value={line.quantity} onChange={(e) => updateLine(index, { quantity: e.target.value })} />
+                  <div className="grid gap-2 md:grid-cols-4">
+                    <input className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-[#60A61F]" type="number" min="0" step="0.1" placeholder="Số lượng nhập (kg)" value={line.quantity} onChange={(e) => updateLine(index, { quantity: e.target.value })} />
                     <input className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-[#60A61F]" type="number" min="0" placeholder="Giá nhập (VNĐ)" value={line.importPrice} onChange={(e) => updateLine(index, { importPrice: e.target.value })} />
+                    <input className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-[#60A61F]" type="number" min="0" placeholder="Giá bán (VNĐ)" value={line.sellPrice} onChange={(e) => updateLine(index, { sellPrice: e.target.value, product: { ...line.product, currentPrice: e.target.value } })} />
                     <input className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold outline-none focus:border-[#60A61F]" type="date" title="Ngày đóng gói/nhập" value={line.packagedAt} onChange={(e) => updateLine(index, { packagedAt: e.target.value })} />
                   </div>
                 </div>
@@ -251,6 +277,7 @@ export default function TrangNhapHang() {
               <div>
                 <p className="text-xs font-bold uppercase text-slate-300">Dự kiến tổng chi</p>
                 <p className="text-2xl font-black">{new Intl.NumberFormat('vi-VN').format(estimatedTotal)} ₫</p>
+                <p className="mt-1 text-xs font-bold text-lime-100">Lãi dự kiến: {new Intl.NumberFormat('vi-VN').format(estimatedProfit)} VNĐ</p>
               </div>
               <button
                 className="rounded-xl bg-gradient-to-r from-lime-500 to-pink-300 px-8 py-3 text-sm font-black uppercase tracking-wider text-white shadow-xl transition-colors duration-200 hover:from-lime-400 hover:via-fuchsia-200 hover:to-pink-200 disabled:opacity-50"
@@ -292,7 +319,11 @@ export default function TrangNhapHang() {
             ) : data?.receipts && data.receipts.length > 0 ? (
               <div className="space-y-3">
                 {data.receipts.map(receipt => (
-                  <div key={receipt.id} className="rounded-xl border border-slate-200 p-3 transition hover:border-[#60A61F] hover:shadow-md">
+                  <div 
+                    key={receipt.id} 
+                    onClick={() => setSelectedReceipt(receipt)}
+                    className="cursor-pointer rounded-xl border border-slate-200 p-3 transition hover:border-[#60A61F] hover:shadow-md hover:bg-slate-50"
+                  >
                     <div className="flex items-start justify-between">
                       <span className="font-black text-[#1a4d2e]">{receipt.receiptCode}</span>
                       <span className="text-sm font-black text-slate-800">
@@ -314,8 +345,87 @@ export default function TrangNhapHang() {
             )}
           </div>
         </div>
-
       </div>
+
+      {/* POPUP CHI TIẾT */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[90vh]">
+            <div className="flex items-center justify-between bg-[#1a4d2e] px-6 py-4 text-white">
+              <h3 className="text-lg font-bold">Chi tiết Phiếu Nhập: {selectedReceipt.receiptCode}</h3>
+              <button 
+                onClick={() => setSelectedReceipt(null)} 
+                className="text-2xl leading-none hover:text-gray-300 transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div>
+                  <p className="text-slate-500 font-medium">Nhà cung cấp:</p>
+                  <p className="font-bold text-slate-800">{selectedReceipt.supplierName}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 font-medium">Người lập phiếu:</p>
+                  <p className="font-bold text-slate-800">{selectedReceipt.receivedByName}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 font-medium">Ngày lập:</p>
+                  <p className="font-bold text-slate-800">
+                    {new Date(selectedReceipt.createdAt).toLocaleString('vi-VN')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500 font-medium">Tổng tiền:</p>
+                  <p className="font-black text-lime-700 text-base">
+                    {new Intl.NumberFormat('vi-VN').format(selectedReceipt.totalAmount)} ₫
+                  </p>
+                </div>
+                {selectedReceipt.note && (
+                  <div className="col-span-2 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
+                    <p className="text-slate-500 font-medium text-xs mb-1">Ghi chú:</p>
+                    <p className="text-slate-800 italic">{selectedReceipt.note}</p>
+                  </div>
+                )}
+              </div>
+
+              <h4 className="font-bold text-[#1a4d2e] border-b pb-2 mb-3">Danh sách mặt hàng nhập</h4>
+              <div className="space-y-3">
+                {selectedReceipt.batches?.map((batch: any) => (
+                  <div key={batch.id} className="p-3 border border-slate-200 rounded-xl bg-slate-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-bold text-slate-800">{batch.productName}</p>
+                        <p className="text-xs text-slate-500">Mã lô: {batch.batchCode}</p>
+                      </div>
+                      <p className="font-bold text-slate-800 text-sm">
+                        {new Intl.NumberFormat('vi-VN').format(batch.quantity * batch.importPrice)} ₫
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2 text-xs text-slate-600 mt-2 bg-white p-2 rounded-lg border border-slate-100">
+                      <p>SL: <b>{batch.quantity} {batch.unit}</b></p>
+                      <p>Đơn giá: <b>{new Intl.NumberFormat('vi-VN').format(batch.importPrice)} ₫</b></p>
+                      <p>HSD: <b>{new Date(batch.expiredAt).toLocaleDateString('vi-VN')}</b></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 border-t flex justify-end">
+              <button 
+                onClick={() => setSelectedReceipt(null)}
+                className="px-6 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-100"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

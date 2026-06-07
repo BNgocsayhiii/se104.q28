@@ -12,18 +12,77 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
-function kgToGram(quantity: number) {
-  return Math.round((quantity || 0) * 1000)
+// ========================================================
+// COMPONENT: THẺ SẢN PHẨM (Xử lý việc đổi giá tự động)
+// ========================================================
+const ProductCard = ({ product, addItem }: { product: any; addItem: Function }) => {
+  const [selectedBatchId, setSelectedBatchId] = useState(product.batches[0]?.id || '')
+
+  const available = product.batches.reduce((sum: number, batch: any) => sum + batch.effectiveRemaining, 0)
+  const selectedBatch = product.batches.find((b: any) => b.id === selectedBatchId) || product.batches[0]
+
+  const basePrice = product.currentPrice;
+
+  // XÁC ĐỊNH GIÁ BÁN LINH HOẠT
+  let displayPrice = basePrice;
+  if (selectedBatch?.status === 'NEAR_EXPIRY') {
+    displayPrice = basePrice * 0.8; // Cận date tự động giảm 20%
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold text-slate-800">{product.name}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {product.sku} - Tồn tổng: {available.toLocaleString('vi-VN')} kg
+          </p>
+        </div>
+        <div className="text-right flex flex-col items-end">
+          {selectedBatch?.status === 'NEAR_EXPIRY' && (
+            <span className="text-[10px] text-red-500 font-bold bg-red-50 px-1.5 py-0.5 rounded mb-0.5 border border-red-100">
+              Cận date (-20%)
+            </span>
+          )}
+          <div className="flex items-center gap-1.5">
+            {selectedBatch?.status === 'NEAR_EXPIRY' && (
+               <span className="text-[11px] text-slate-400 line-through">
+                 {money.format(basePrice)}
+               </span>
+            )}
+            <p className="shrink-0 text-sm font-black text-[#4a9b5c]">
+              {money.format(displayPrice)} đ/kg
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <select
+          className="sale-input flex-1 text-[11px] font-medium"
+          value={selectedBatchId}
+          onChange={(e) => setSelectedBatchId(e.target.value)}
+        >
+          {product.batches.map((batch: any) => (
+            <option key={batch.id} value={batch.id}>
+              {batch.batchCode} ({batch.effectiveRemaining} kg) - Gốc: {money.format(batch.importPrice)} {batch.status === 'NEAR_EXPIRY' ? ' (Cận)' : ''}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="rounded-lg bg-[#4a9b5c] px-4 text-sm font-bold text-white hover:bg-[#347a45] transition-colors"
+          onClick={() => addItem(product.id, selectedBatchId, displayPrice)}
+        >
+          Thêm
+        </button>
+      </div>
+    </div>
+  )
 }
 
-function kgToHundredGramUnit(quantity: number) {
-  return Math.round((quantity || 0) * 10)
-}
-
-function hundredGramUnitToKg(quantity: number) {
-  return Math.max(quantity || 0, 0) / 10
-}
-
+// ========================================================
+// COMPONENT CHÍNH: TRANG TẠO HÓA ĐƠN
+// ========================================================
 export default function CreateSalesInvoicePage() {
   const [productSearch, setProductSearch] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
@@ -55,6 +114,7 @@ export default function CreateSalesInvoicePage() {
     setPaymentMethod,
     addItem,
     updateItemQuantity,
+    updateItemPrice,
     removeItem,
     createInvoice,
   } = useCreateSalesInvoice()
@@ -110,7 +170,7 @@ export default function CreateSalesInvoicePage() {
         <div>
           <div>
             <h1 className="text-2xl font-bold leading-tight text-[#1a4d2e]">Tạo hóa đơn bán hàng</h1>
-            <p className="text-sm leading-tight text-slate-500">Chọn sản phẩm, khách hàng, thanh toán và trừ tồn kho theo lô.</p>
+            <p className="text-sm leading-tight text-slate-500">Chọn sản phẩm, chỉnh sửa giá bán theo lô và thanh toán.</p>
           </div>
         </div>
 
@@ -120,7 +180,7 @@ export default function CreateSalesInvoicePage() {
           </div>
         )}
 
-        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(380px,0.92fr)]">
+        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(420px,1.2fr)]">
           <section className="sale-panel flex min-h-0 flex-col p-4 pb-3">
             <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <h2 className="font-bold text-slate-800">Sản phẩm đang bán</h2>
@@ -136,47 +196,13 @@ export default function CreateSalesInvoicePage() {
               <div className="py-12 text-center text-sm font-semibold text-slate-400">Đang tải dữ liệu...</div>
             ) : (
               <div className="grid min-h-0 flex-1 auto-rows-max gap-3 overflow-y-auto pr-1 md:grid-cols-2">
-                {filteredProducts.map((product) => {
-                  const available = product.batches.reduce((sum, batch) => sum + batch.effectiveRemaining, 0)
-                  const firstBatch = product.batches[0]
-
-                  return (
-                    <div key={product.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-slate-800">{product.name}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {product.sku} - Tồn: {money.format(kgToGram(available))} gram
-                          </p>
-                        </div>
-                        <p className="shrink-0 text-sm font-black text-[#4a9b5c]">{money.format(product.currentPrice)} đ/kg</p>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <select
-                          id={`batch-${product.id}`}
-                          className="sale-input flex-1"
-                          defaultValue={firstBatch?.id || ''}
-                        >
-                          {product.batches.map((batch) => (
-                            <option key={batch.id} value={batch.id}>
-                              {batch.batchCode} - {money.format(kgToGram(batch.effectiveRemaining))} gram
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className="rounded-lg bg-[#4a9b5c] px-4 text-sm font-bold text-white hover:bg-[#347a45]"
-                          onClick={() => {
-                            const select = document.getElementById(`batch-${product.id}`) as HTMLSelectElement | null
-                            addItem(product.id, select?.value || undefined)
-                          }}
-                        >
-                          Thêm
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
+                {filteredProducts.map((product) => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    addItem={addItem} 
+                  />
+                ))}
               </div>
             )}
           </section>
@@ -249,27 +275,40 @@ export default function CreateSalesInvoicePage() {
                   <div className="py-10 text-center text-sm text-slate-400">Chưa có sản phẩm nào.</div>
                 ) : (
                   cartDetails.map((item, index) => (
-                    <div key={`${item.productId}-${item.batchId}-${index}`} className="grid grid-cols-[1fr_104px_98px_28px] items-center gap-2 border-b border-dashed border-slate-100 p-3">
+                    <div key={`${item.productId}-${item.batchId}-${index}`} className="grid grid-cols-[1.5fr_100px_90px_100px_28px] items-center gap-2 border-b border-dashed border-slate-100 p-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">{item.product?.name || 'Sản phẩm'}</p>
-                        <p className="text-xs text-slate-500">
-                          {item.batch?.batchCode || 'FIFO'} - {money.format(item.unitPrice)} đ/kg
+                        <p className="text-[11px] text-slate-500">
+                          {item.batch?.batchCode || 'FIFO'} 
                         </p>
                       </div>
                       <div className="relative">
                         <input
-                          className="sale-input pr-12"
+                          className="sale-input pr-5 text-right text-xs font-bold text-[#4a9b5c]"
                           type="number"
                           min="0"
-                          step="1"
-                          title="Nhập 1 = 100 gram, 10 = 1000 gram"
-                          value={item.quantity > 0 ? kgToHundredGramUnit(item.quantity) : ''}
+                          title="Chỉnh sửa giá bán theo lô"
+                          value={item.unitPrice}
                           onChange={(event) => {
                             const value = event.target.value
-                            updateItemQuantity(index, value ? hundredGramUnitToKg(Number(value)) : 0)
+                            updateItemPrice(index, value ? Number(value) : 0)
                           }}
                         />
-                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">x100g</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          className="sale-input pr-8"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          title="Nhập số lượng kg (VD: 1.5)"
+                          value={item.quantity > 0 ? item.quantity : ''}
+                          onChange={(event) => {
+                            const value = event.target.value
+                            updateItemQuantity(index, value ? Number(value) : 0)
+                          }}
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">kg</span>
                       </div>
                       <p className="text-right text-sm font-bold text-[#1a4d2e]">
                         {item.quantity > 0 ? `${money.format(item.subtotal)} đ` : ''}

@@ -56,7 +56,6 @@ interface WarehouseImportData {
   }
 }
 
-// Cấu trúc Draft mới hỗ trợ lưu thông tin text khi tạo mới
 export interface DraftSupplier {
   id: string
   name: string
@@ -79,6 +78,7 @@ export interface ImportDraftLine {
   product: DraftProduct
   quantity: string
   importPrice: string
+  sellPrice: string
   packagedAt: string
 }
 
@@ -93,11 +93,12 @@ function todayInputValue() {
 }
 
 function emptyProduct(): DraftProduct {
+  // Mặc định unit là 'kg', SKU để trống cho backend tự sinh
   return { id: '', name: '', sku: '', unit: 'kg', shelfLifeDays: '5', currentPrice: '', categoryId: '' }
 }
 
 function emptyLine(): ImportDraftLine {
-  return { product: emptyProduct(), quantity: '', importPrice: '', packagedAt: todayInputValue() }
+  return { product: emptyProduct(), quantity: '', importPrice: '', sellPrice: '', packagedAt: todayInputValue() }
 }
 
 export function useWarehouseImport() {
@@ -145,7 +146,6 @@ export function useWarehouseImport() {
     setError('')
     setSuccessMessage('')
     try {
-      // Validate cơ bản trước khi gửi
       if (!draft.supplier.id && !draft.supplier.name.trim()) throw new Error('Vui lòng chọn hoặc nhập tên nhà cung cấp')
       if (draft.lines.some(l => !l.product.id && !l.product.name.trim())) throw new Error('Vui lòng điền đủ tên sản phẩm cho các mã mới')
 
@@ -156,9 +156,10 @@ export function useWarehouseImport() {
           supplier: draft.supplier,
           note: draft.note,
           lines: draft.lines.map(line => ({
-            product: line.product,
+            product: { ...line.product, currentPrice: line.sellPrice || line.product.currentPrice },
             quantity: Number(line.quantity),
             importPrice: Number(line.importPrice),
+            sellPrice: Number(line.sellPrice || line.product.currentPrice),
             packagedAt: line.packagedAt,
           })),
         }),
