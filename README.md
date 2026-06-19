@@ -9,7 +9,7 @@
 * **Tên môn học:** Nhập môn Công nghệ phần mềm
 * **Lớp:** SE104.Q28
 * **Năm học:** HK2 (2025 - 2026)
-* **Giảng viên hướng dẫn:** Đỗ Văn Tiến - Nguyễn Tấn Toàn
+* **Giảng viên hướng dẫn:** Đỗ Văn Tiến
 
 ## Thành viên nhóm
 
