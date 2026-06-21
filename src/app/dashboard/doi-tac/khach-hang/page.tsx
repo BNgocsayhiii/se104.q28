@@ -3,75 +3,18 @@ import React, { useState } from 'react'
 import { useCustomers, Customer, CustomerFormData } from '@/hooks/useCustomers'
 import { useAuth } from '@/hooks/useAuth'
 
-// ── Modal xác nhận xóa ──────────────────────────────────────────────────────
-function DeleteConfirmModal({
-  customer,
-  onConfirm,
-  onCancel,
-  loading,
+// ── Modal thêm khách hàng ─────────────────────────────────────────────────────
+function AddModal({
+  onSave, onCancel, loading, error,
 }: {
-  customer: Customer
-  onConfirm: () => void
-  onCancel: () => void
-  loading: boolean
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-red-100">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">⚠️</span>
-          <h3 className="font-bold text-slate-800 text-lg">Xác nhận xóa</h3>
-        </div>
-        <p className="text-slate-600 text-sm mb-1">
-          Bạn có chắc muốn xóa khách hàng:
-        </p>
-        <p className="font-bold text-[#1a4d2e] mb-1">{customer.name}</p>
-        <p className="text-xs text-slate-400 mb-5">Mã: {customer.code} · SĐT: {customer.phone}</p>
-        <p className="text-xs text-red-500 mb-5 bg-red-50 rounded-lg px-3 py-2">
-          Không thể hoàn tác. Khách hàng đã có hóa đơn sẽ không xóa được.
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Đang xóa...' : 'Xóa'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Modal sửa khách hàng ─────────────────────────────────────────────────────
-function EditModal({
-  customer,
-  onSave,
-  onCancel,
-  loading,
-  error,
-}: {
-  customer: Customer
   onSave: (data: CustomerFormData) => void
   onCancel: () => void
   loading: boolean
   error: string | null
 }) {
   const [form, setForm] = useState<CustomerFormData>({
-    id: customer.id,
-    name: customer.name,
-    phone: customer.phone,
-    email: customer.email === '-' ? '' : customer.email,
-    address: customer.address === 'Chưa cập nhật' ? '' : customer.address,
+    name: '', phone: '', email: '', address: '',
   })
-
   const set = (field: keyof CustomerFormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }))
 
@@ -79,14 +22,12 @@ function EditModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 border border-slate-100">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-slate-800 text-lg">Chỉnh sửa khách hàng</h3>
+          <h3 className="font-bold text-slate-800 text-lg">Thêm khách hàng</h3>
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
         </div>
-
         {error && (
           <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">{error}</div>
         )}
-
         <div className="space-y-3">
           {[
             { label: 'Tên khách hàng *', field: 'name' as const, placeholder: 'Nguyễn Văn A' },
@@ -106,12 +47,113 @@ function EditModal({
             </div>
           ))}
         </div>
-
         <div className="flex gap-3 mt-6">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
+            Hủy
+          </button>
           <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+            onClick={() => onSave(form)}
+            disabled={loading || !form.name || !form.phone}
+            className="flex-1 py-2.5 rounded-xl bg-[#60A61F] text-white text-sm font-bold hover:bg-[#4e8c18] transition-colors disabled:opacity-50"
           >
+            {loading ? 'Đang thêm...' : '+ Thêm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal xác nhận xóa ──────────────────────────────────────────────────────
+function DeleteConfirmModal({
+  customer, onConfirm, onCancel, loading,
+}: {
+  customer: Customer
+  onConfirm: () => void
+  onCancel: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-red-100">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">⚠️</span>
+          <h3 className="font-bold text-slate-800 text-lg">Xác nhận xóa</h3>
+        </div>
+        <p className="text-slate-600 text-sm mb-1">Bạn có chắc muốn xóa khách hàng:</p>
+        <p className="font-bold text-[#1a4d2e] mb-1">{customer.name}</p>
+        <p className="text-xs text-slate-400 mb-5">Mã: {customer.code} · SĐT: {customer.phone}</p>
+        <p className="text-xs text-red-500 mb-5 bg-red-50 rounded-lg px-3 py-2">
+          Không thể hoàn tác. Khách hàng đã có hóa đơn sẽ không xóa được.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
+            Hủy
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Đang xóa...' : 'Xóa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal sửa khách hàng ─────────────────────────────────────────────────────
+function EditModal({
+  customer, onSave, onCancel, loading, error,
+}: {
+  customer: Customer
+  onSave: (data: CustomerFormData) => void
+  onCancel: () => void
+  loading: boolean
+  error: string | null
+}) {
+  const [form, setForm] = useState<CustomerFormData>({
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    email: customer.email === '-' ? '' : customer.email,
+    address: customer.address === 'Chưa cập nhật' ? '' : customer.address,
+  })
+  const set = (field: keyof CustomerFormData) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(f => ({ ...f, [field]: e.target.value }))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 border border-slate-100">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-bold text-slate-800 text-lg">Chỉnh sửa khách hàng</h3>
+          <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+        </div>
+        {error && (
+          <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">{error}</div>
+        )}
+        <div className="space-y-3">
+          {[
+            { label: 'Tên khách hàng *', field: 'name' as const, placeholder: 'Nguyễn Văn A' },
+            { label: 'Số điện thoại *', field: 'phone' as const, placeholder: '0901234567' },
+            { label: 'Email', field: 'email' as const, placeholder: 'email@example.com' },
+            { label: 'Địa chỉ', field: 'address' as const, placeholder: '123 Đường ABC, TP.HCM' },
+          ].map(({ label, field, placeholder }) => (
+            <div key={field}>
+              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">{label}</label>
+              <input
+                type="text"
+                value={form[field] ?? ''}
+                onChange={set(field)}
+                placeholder={placeholder}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-[#60A61F] focus:ring-2 focus:ring-[#60A61F]/10 outline-none transition-all"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
             Hủy
           </button>
           <button
@@ -134,11 +176,13 @@ export default function CustomersPage() {
 
   const {
     customers, loading, searchQuery, setSearchQuery,
-    updateCustomer, deleteCustomer, actionLoading, error, setError,
+    createCustomer, updateCustomer, deleteCustomer,
+    actionLoading, error, setError,
   } = useCustomers()
 
   const [editTarget, setEditTarget] = useState<Customer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const guavaColors = { primary: '#60A61F', textDark: '#1a4d2e', gridLine: '#ECEDDF' }
   const floatingFruits = [
@@ -147,6 +191,11 @@ export default function CustomersPage() {
     { icon: '🥭', pos: 'top-[60%] left-[5%]', delay: '2s' },
     { icon: '🍈', pos: 'bottom-[10%] right-[15%]', delay: '1.5s' },
   ]
+
+  async function handleCreate(data: CustomerFormData) {
+    const ok = await createCustomer(data)
+    if (ok) setShowAddModal(false)
+  }
 
   async function handleSave(data: CustomerFormData) {
     const ok = await updateCustomer(data)
@@ -178,6 +227,14 @@ export default function CustomersPage() {
       </div>
 
       {/* Modals */}
+      {showAddModal && (
+        <AddModal
+          onSave={handleCreate}
+          onCancel={() => { setShowAddModal(false); setError(null) }}
+          loading={actionLoading}
+          error={error}
+        />
+      )}
       {editTarget && (
         <EditModal
           customer={editTarget}
@@ -204,16 +261,27 @@ export default function CustomersPage() {
           <p className="text-slate-500 text-sm">Quản lý thông tin và điểm thưởng khách hàng.</p>
         </div>
 
-        {/* BỘ LỌC TÌM KIẾM */}
-        <div className="mb-6 relative w-full md:w-1/3">
-          <i className="ti ti-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo Tên, SĐT, Mã KH..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="ft-input w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm transition-all text-sm"
-          />
+        {/* Tìm kiếm + Thêm KH */}
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="relative w-full md:w-1/3">
+            <i className="ti ti-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo Tên, SĐT, Mã KH..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="ft-input w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white shadow-sm transition-all text-sm"
+            />
+          </div>
+          {isManager && (
+            <button
+              onClick={() => { setShowAddModal(true); setError(null) }}
+              className="action-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#60A61F] text-white text-sm font-bold hover:bg-[#4e8c18] shadow-sm transition-colors whitespace-nowrap"
+            >
+              <i className="ti ti-plus text-base"></i>
+              Thêm KH
+            </button>
+          )}
         </div>
 
         {/* BẢNG DỮ LIỆU */}
@@ -260,18 +328,14 @@ export default function CustomersPage() {
                             <button
                               onClick={() => setEditTarget(c)}
                               className="action-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#60A61F]/10 text-[#4e8c18] text-xs font-semibold hover:bg-[#60A61F]/20 border border-[#60A61F]/20"
-                              title="Chỉnh sửa"
                             >
-                              <i className="ti ti-edit text-sm"></i>
-                              Sửa
+                              <i className="ti ti-edit text-sm"></i>Sửa
                             </button>
                             <button
                               onClick={() => setDeleteTarget(c)}
                               className="action-btn inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-500 text-xs font-semibold hover:bg-red-100 border border-red-100"
-                              title="Xóa"
                             >
-                              <i className="ti ti-trash text-sm"></i>
-                              Xóa
+                              <i className="ti ti-trash text-sm"></i>Xóa
                             </button>
                           </div>
                         </td>
